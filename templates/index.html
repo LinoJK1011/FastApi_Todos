@@ -7,42 +7,144 @@
 </head>
 <body>
     <h1>To-Do List</h1>
-    <ul id="todo-list"></ul>
+
     <form id="todo-form">
-        <input type="text" id="title" placeholder="Title" required>
-        <input type="text" id="description" placeholder="Description" required>
+        <input type="text" id="title" placeholder="제목 (필수)" required>
+        <input type="text" id="description" placeholder="설명 (선택)">
+        <label for="group" style="margin-left:8px;">그룹:</label>
+        <input type="number" id="group" min="1" max="9" step="1" value="1" style="width:3rem;">
         <button type="submit">Add To-Do</button>
     </form>
+
+    <div id="groups"></div>
     <script>
+        function fmt(dt) {
+            if (!dt) return '';
+            try {
+                const d = new Date(dt);
+                return d.toLocaleString();
+            } catch { return dt; }
+        }
+
+        function el(tag, props = {}, ...children) {
+            const e = document.createElement(tag);
+            Object.entries(props).forEach(([k,v]) => {
+                if (k === 'class') e.className = v; else if (k === 'onclick') e.onclick = v; else e.setAttribute(k, v);
+            });
+            children.flat().forEach(c => e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+            return e;
+        }
+
         async function fetchTodos() {
             const response = await fetch('/todos');
             const todos = await response.json();
-            const todoList = document.getElementById('todo-list');
-            todoList.innerHTML = '';
-            todos.forEach(todo => {
-                const li = document.createElement('li');
-                li.textContent = `${todo.title}: ${todo.description}`;
-                todoList.appendChild(li);
+            const container = document.getElementById('groups');
+            container.innerHTML = '';
+
+            // group by group number (1-9), only show those that exist
+            const byGroup = new Map();
+            todos.forEach(t => {
+                const g = t.group ?? 1;
+                if (!byGroup.has(g)) byGroup.set(g, []);
+                byGroup.get(g).push(t);
             });
+
+            const groups = Array.from(byGroup.keys()).sort((a,b) => a-b);
+            groups.forEach((g, idx) => {
+                if (idx > 0) container.appendChild(document.createElement('hr'));
+                const section = el('div');
+                section.appendChild(el('h2', {}, `Group ${g}`));
+
+                const list = el('ul');
+                byGroup.get(g)
+                    .sort((a,b) => a.id - b.id)
+                    .forEach(todo => {
+                        const item = renderTodo(todo);
+                        list.appendChild(item);
+                    });
+                section.appendChild(list);
+                container.appendChild(section);
+            });
+        }
+
+        function renderTodo(todo) {
+            const label = el('div', {},
+                el('strong', {}, todo.title),
+                ' ',
+                todo.completed ? el('span', {}, '(완료)') : ''
+            );
+            const desc = todo.description ? el('div', {}, todo.description) : el('div');
+            const meta = el('div', {},
+                el('small', {}, `생성: ${fmt(todo.created_at)}`),
+                todo.completed_at ? el('small', { style: 'margin-left:8px;' }, `완료: ${fmt(todo.completed_at)}`) : ''
+            );
+
+            const btns = el('div', { style: 'margin-top:4px;' });
+            const editBtn = el('button', { type: 'button', onclick: () => editTodo(todo) }, '수정');
+            const delBtn = el('button', { type: 'button', style: 'margin-left:4px;', onclick: () => deleteTodo(todo.id) }, '삭제');
+            btns.appendChild(editBtn);
+            btns.appendChild(delBtn);
+            if (!todo.completed) {
+                const doneBtn = el('button', { type: 'button', style: 'margin-left:4px;', onclick: () => completeTodo(todo.id) }, '완료');
+                btns.appendChild(doneBtn);
+            }
+
+            const li = el('li');
+            li.appendChild(label);
+            li.appendChild(desc);
+            li.appendChild(meta);
+            li.appendChild(btns);
+            return li;
         }
 
         document.getElementById('todo-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             const title = document.getElementById('title').value;
             const description = document.getElementById('description').value;
-            const response = await fetch('/todos', {
+            const group = Number(document.getElementById('group').value || '1');
+            await fetch('/todos', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ id: Date.now(), title, description, completed: false })
+                body: JSON.stringify({ title, description: description || null, group })
             });
-            if (response.ok) {
-                fetchTodos();
-            }
+            (document.getElementById('title').value = '');
+            (document.getElementById('description').value = '');
+            (document.getElementById('group').value = '1');
+            fetchTodos();
         });
 
         fetchTodos();
+
+        async function completeTodo(id) {
+            await fetch(`/todos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ completed: true })
+            });
+            fetchTodos();
+        }
+
+        async function deleteTodo(id) {
+            await fetch(`/todos/${id}`, { method: 'DELETE' });
+            fetchTodos();
+        }
+
+        async function editTodo(todo) {
+            const title = window.prompt('제목', todo.title);
+            if (title === null || title.trim() === '') return; // cancel or empty
+            const description = window.prompt('설명 (빈 값 허용)', todo.description || '') ?? '';
+            const groupStr = window.prompt('그룹 (1-9)', String(todo.group ?? 1));
+            let group = Number(groupStr);
+            if (!Number.isFinite(group) || group < 1 || group > 9) group = todo.group ?? 1;
+            await fetch(`/todos/${todo.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description: description || null, group })
+            });
+            fetchTodos();
+        }
     </script>
 </body>
 </html>
