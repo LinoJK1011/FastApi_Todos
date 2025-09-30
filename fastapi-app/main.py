@@ -64,6 +64,56 @@ def next_id(todos: List[dict]) -> int:
 def get_todos():
     return load_todos()
 
+# Read - 그룹별 필터링
+@app.get("/todos/group/{group_id}", response_model=List[TodoItem])
+def get_todos_by_group(group_id: int):
+    if group_id < 1 or group_id > 9:
+        raise HTTPException(status_code=400, detail="Group ID must be between 1 and 9")
+    todos = load_todos()
+    filtered = [todo for todo in todos if todo.get("group") == group_id]
+    return filtered
+
+# Read - 완료/미완료 상태별 필터링
+@app.get("/todos/status/{status}", response_model=List[TodoItem])
+def get_todos_by_status(status: str):
+    todos = load_todos()
+    if status == "completed":
+        return [todo for todo in todos if todo.get("completed")]
+    elif status == "pending":
+        return [todo for todo in todos if not todo.get("completed")]
+    else:
+        raise HTTPException(status_code=400, detail="Status must be 'completed' or 'pending'")
+
+# Read - 정렬 기능
+@app.get("/todos/sorted", response_model=List[TodoItem])
+def get_sorted_todos(sort_by: str = "created_at", order: str = "desc"):
+    """
+    정렬 가능한 필드: id, title, created_at, completed, completed_at, group
+    정렬 순서: asc (오름차순), desc (내림차순)
+    """
+    valid_sort_fields = ["id", "title", "created_at", "completed", "completed_at", "group"]
+    if sort_by not in valid_sort_fields:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid sort_by field. Must be one of: {', '.join(valid_sort_fields)}"
+        )
+    if order not in ["asc", "desc"]:
+        raise HTTPException(status_code=400, detail="Order must be 'asc' or 'desc'")
+    
+    todos = load_todos()
+    reverse = (order == "desc")
+    
+    # None 값 처리를 위한 정렬
+    def sort_key(todo):
+        value = todo.get(sort_by)
+        # None 값은 정렬 시 맨 뒤로 보냄
+        if value is None:
+            return ("", "") if not reverse else ("~", "~")
+        return value
+    
+    sorted_todos = sorted(todos, key=sort_key, reverse=reverse)
+    return sorted_todos
+
 # Create
 @app.post("/todos", response_model=TodoItem)
 def create_todo(todo: TodoCreate):

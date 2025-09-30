@@ -16,8 +16,56 @@
         <button type="submit">Add To-Do</button>
     </form>
 
+    <hr>
+    <h3>필터 및 정렬</h3>
+    <div>
+        <label>상태:</label>
+        <button type="button" class="filter-status" data-status="all">전체</button>
+        <button type="button" class="filter-status" data-status="pending">미완료</button>
+        <button type="button" class="filter-status" data-status="completed">완료</button>
+        
+        <label style="margin-left:16px;">그룹:</label>
+        <button type="button" class="filter-group-btn" data-group="all">전체</button>
+        <button type="button" class="filter-group-btn" data-group="1">1</button>
+        <button type="button" class="filter-group-btn" data-group="2">2</button>
+        <button type="button" class="filter-group-btn" data-group="3">3</button>
+        <button type="button" class="filter-group-btn" data-group="4">4</button>
+        <button type="button" class="filter-group-btn" data-group="5">5</button>
+        <button type="button" class="filter-group-btn" data-group="6">6</button>
+        <button type="button" class="filter-group-btn" data-group="7">7</button>
+        <button type="button" class="filter-group-btn" data-group="8">8</button>
+        <button type="button" class="filter-group-btn" data-group="9">9</button>
+    </div>
+    <div style="margin-top:8px;">
+        <label>정렬:</label>
+        <select id="sort-field">
+            <option value="created_at">생성일</option>
+            <option value="id">ID</option>
+            <option value="title">제목</option>
+            <option value="group">그룹</option>
+            <option value="completed">완료상태</option>
+            <option value="completed_at">완료일</option>
+        </select>
+        <select id="sort-order">
+            <option value="desc">내림차순</option>
+            <option value="asc">오름차순</option>
+        </select>
+    </div>
+    <div style="margin-top:8px;">
+        <span id="filter-display"></span>
+    </div>
+    <hr>
+
     <div id="groups"></div>
     <script>
+        // 현재 필터 상태
+        let currentFilters = {
+            status: 'all',
+            group: 'all',
+            sortField: 'created_at',
+            sortOrder: 'desc'
+        };
+
         function fmt(dt) {
             if (!dt) return '';
             try {
@@ -35,11 +83,74 @@
             return e;
         }
 
+        function updateFilterDisplay() {
+            const { status, group, sortField, sortOrder } = currentFilters;
+
+            const statusText = status === 'all' ? '전체' : status === 'pending' ? '미완료' : '완료';
+            const groupText = group === 'all' ? '전체' : group;
+            const sortFieldText = {
+                'created_at': '생성일',
+                'id': 'ID',
+                'title': '제목',
+                'group': '그룹',
+                'completed': '완료상태',
+                'completed_at': '완료일'
+            }[sortField] || sortField;
+            const sortOrderText = sortOrder === 'asc' ? '오름차순' : '내림차순';
+
+            document.getElementById('filter-display').textContent =
+                `현재 필터: 상태=${statusText}, 그룹=${groupText}, 정렬=${sortFieldText}(${sortOrderText})`;
+        }
+
         async function fetchTodos() {
-            const response = await fetch('/todos');
-            const todos = await response.json();
+            let url = '/todos';
+            const { status, group, sortField, sortOrder } = currentFilters;
+
+            updateFilterDisplay();
+
+            // 상태 필터
+            if (status !== 'all') {
+                url = `/todos/status/${status}`;
+            }
+            // 그룹 필터
+            else if (group !== 'all') {
+                url = `/todos/group/${group}`;
+            }
+
+            // 정렬
+            const sortUrl = `/todos/sorted?sort_by=${sortField}&order=${sortOrder}`;
+
+            let todos;
+            if (status === 'all' && group === 'all') {
+                // 필터 없음 - 서버 정렬
+                const response = await fetch(sortUrl);
+                todos = await response.json();
+            } else {
+                // 필터 있음 - 클라이언트 정렬
+                const response = await fetch(url);
+                todos = await response.json();
+                todos.sort((a, b) => {
+                    let aVal = a[sortField];
+                    let bVal = b[sortField];
+                    if (aVal === null || aVal === undefined) return 1;
+                    if (bVal === null || bVal === undefined) return -1;
+                    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            renderTodoList(todos);
+        }
+
+        function renderTodoList(todos) {
             const container = document.getElementById('groups');
             container.innerHTML = '';
+
+            if (todos.length === 0) {
+                container.innerHTML = '<p>할일이 없습니다.</p>';
+                return;
+            }
 
             // group by group number (1-9), only show those that exist
             const byGroup = new Map();
@@ -56,12 +167,10 @@
                 section.appendChild(el('h2', {}, `Group ${g}`));
 
                 const list = el('ul');
-                byGroup.get(g)
-                    .sort((a,b) => a.id - b.id)
-                    .forEach(todo => {
-                        const item = renderTodo(todo);
-                        list.appendChild(item);
-                    });
+                byGroup.get(g).forEach(todo => {
+                    const item = renderTodo(todo);
+                    list.appendChild(item);
+                });
                 section.appendChild(list);
                 container.appendChild(section);
             });
@@ -112,6 +221,33 @@
             (document.getElementById('title').value = '');
             (document.getElementById('description').value = '');
             (document.getElementById('group').value = '1');
+            fetchTodos();
+        });
+
+        // 상태 필터 버튼
+        document.querySelectorAll('.filter-status').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentFilters.status = btn.dataset.status;
+                fetchTodos();
+            });
+        });
+
+        // 그룹 필터 버튼
+        document.querySelectorAll('.filter-group-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentFilters.group = btn.dataset.group;
+                fetchTodos();
+            });
+        });
+
+        // 정렬
+        document.getElementById('sort-field').addEventListener('change', (e) => {
+            currentFilters.sortField = e.target.value;
+            fetchTodos();
+        });
+
+        document.getElementById('sort-order').addEventListener('change', (e) => {
+            currentFilters.sortOrder = e.target.value;
             fetchTodos();
         });
 
