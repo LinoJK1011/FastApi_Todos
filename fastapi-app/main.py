@@ -47,9 +47,9 @@ def t(request: Request, key_path: str) -> str:
 
     return value if isinstance(value, str) else key_path
 
-# Error Messages (for backward compatibility, will be replaced with i18n)
-TODO_NOT_FOUND = "To-Do item not found"
-TODO_DELETED = "To-Do item deleted"
+# i18n message keys (constants to avoid string literal duplication)
+TODO_NOT_FOUND = "api.todo_not_found"
+TODO_DELETED = "api.todo_deleted"
 
 class TodoItem(BaseModel):
     id: int
@@ -215,7 +215,7 @@ def update_todo(todo_id: int, patch: TodoUpdate, request: Request):
             todos[i] = todo
             save_todos(todos)
             return TodoItem(**todo)
-    raise HTTPException(status_code=404, detail=t(request, "api.todo_not_found"))
+    raise HTTPException(status_code=404, detail=t(request, TODO_NOT_FOUND))
 
 # Delete
 @app.delete("/todos/{todo_id}", response_model=dict)
@@ -223,9 +223,9 @@ def delete_todo(todo_id: int, request: Request):
     todos = load_todos()
     new_todos = [todo for todo in todos if todo.get("id") != todo_id]
     if len(new_todos) == len(todos):
-        raise HTTPException(status_code=404, detail=t(request, "api.todo_not_found"))
+        raise HTTPException(status_code=404, detail=t(request, TODO_NOT_FOUND))
     save_todos(new_todos)
-    return {"message": t(request, "api.todo_deleted")}
+    return {"message": t(request, TODO_DELETED)}
 
 #이거는 풋이랑 딜리트에서 먼저 읽을때 이용(개별항목)
 @app.get("/todos/{todo_id}", response_model=TodoItem)
@@ -234,7 +234,7 @@ def get_todo(todo_id: int, request: Request):
     for todo in todos:
         if todo.get("id") == todo_id:
             return TodoItem(**todo)
-    raise HTTPException(status_code=404, detail=t(request, "api.todo_not_found"))
+    raise HTTPException(status_code=404, detail=t(request, TODO_NOT_FOUND))
 
 
 @app.get("/", response_class=HTMLResponse)
