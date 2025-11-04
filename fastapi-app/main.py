@@ -8,6 +8,10 @@ from datetime import datetime, timezone
 
 app = FastAPI()
 
+# Error Messages
+TODO_NOT_FOUND = "To-Do item not found"
+TODO_DELETED = "To-Do item deleted"
+
 class TodoItem(BaseModel):
     id: int
     title: str
@@ -158,7 +162,7 @@ def update_todo(todo_id: int, patch: TodoUpdate):
             todos[i] = todo
             save_todos(todos)
             return TodoItem(**todo)
-    raise HTTPException(status_code=404, detail="To-Do item not found")
+    raise HTTPException(status_code=404, detail=TODO_NOT_FOUND)
 
 # Delete
 @app.delete("/todos/{todo_id}", response_model=dict)
@@ -166,9 +170,9 @@ def delete_todo(todo_id: int):
     todos = load_todos()
     new_todos = [todo for todo in todos if todo.get("id") != todo_id]
     if len(new_todos) == len(todos):
-        raise HTTPException(status_code=404, detail="To-Do item not found")
+        raise HTTPException(status_code=404, detail=TODO_NOT_FOUND)
     save_todos(new_todos)
-    return {"message": "To-Do item deleted"}
+    return {"message": TODO_DELETED}
 
 #이거는 풋이랑 딜리트에서 먼저 읽을때 이용(개별항목)
 @app.get("/todos/{todo_id}", response_model=TodoItem)
@@ -177,7 +181,7 @@ def get_todo(todo_id: int):
     for todo in todos:
         if todo.get("id") == todo_id:
             return TodoItem(**todo)
-    raise HTTPException(status_code=404, detail="To-Do item not found")
+    raise HTTPException(status_code=404, detail=TODO_NOT_FOUND)
 
 
 @app.get("/", response_class=HTMLResponse)
