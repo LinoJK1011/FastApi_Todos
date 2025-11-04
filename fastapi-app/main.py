@@ -106,9 +106,10 @@ def get_sorted_todos(sort_by: str = "created_at", order: str = "desc"):
     # None 값 처리를 위한 정렬
     def sort_key(todo):
         value = todo.get(sort_by)
-        # None 값은 정렬 시 맨 뒤로 보냄
+        # None 값 처리: 타입 일관성 유지
         if value is None:
-            return ("", "") if not reverse else ("~", "~")
+            # 오름차순: None을 맨 앞으로, 내림차순: None을 맨 뒤로
+            return "" if not reverse else "\uffff"
         return value
     
     sorted_todos = sorted(todos, key=sort_key, reverse=reverse)
