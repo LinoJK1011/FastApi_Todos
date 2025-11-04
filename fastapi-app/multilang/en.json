@@ -1,0 +1,56 @@
+{
+  "app": {
+    "title": "To-Do List"
+  },
+  "form": {
+    "title_placeholder": "Title (required)",
+    "description_placeholder": "Description (optional)",
+    "group_label": "Group:",
+    "submit_button": "Add To-Do"
+  },
+  "filter": {
+    "title": "Filter & Sort",
+    "status_label": "Status:",
+    "status_all": "All",
+    "status_pending": "Pending",
+    "status_completed": "Completed",
+    "group_label": "Group:",
+    "group_all": "All",
+    "sort_label": "Sort:",
+    "sort_created_at": "Created Date",
+    "sort_id": "ID",
+    "sort_title": "Title",
+    "sort_group": "Group",
+    "sort_completed": "Completed Status",
+    "sort_completed_at": "Completed Date",
+    "order_asc": "Ascending",
+    "order_desc": "Descending",
+    "display_prefix": "Current Filter: Status=",
+    "display_group": ", Group=",
+    "display_sort": ", Sort="
+  },
+  "todo": {
+    "empty": "No todos found.",
+    "group_prefix": "Group",
+    "completed_badge": "(Completed)",
+    "created_label": "Created:",
+    "completed_label": "Completed:",
+    "button_edit": "Edit",
+    "button_delete": "Delete",
+    "button_complete": "Complete"
+  },
+  "prompt": {
+    "edit_title": "Title",
+    "edit_description": "Description (optional)",
+    "edit_group": "Group (1-9)"
+  },
+  "api": {
+    "todo_not_found": "To-Do item not found",
+    "todo_deleted": "To-Do item deleted",
+    "group_id_invalid": "Group ID must be between 1 and 9",
+    "status_invalid": "Status must be 'completed' or 'pending'",
+    "sort_field_invalid": "Invalid sort_by field. Must be one of:",
+    "order_invalid": "Order must be 'asc' or 'desc'",
+    "index_not_found": "index.html not found"
+  }
+}

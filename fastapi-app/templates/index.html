@@ -1,31 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+    <title data-i18n="app.title">할일 목록</title>
 </head>
 <body>
-    <h1>To-Do List</h1>
+    <div style="text-align: right; margin-bottom: 16px;">
+        <button type="button" id="lang-ko" onclick="setLanguage('ko')" style="font-weight: bold;">한국어</button>
+        <button type="button" id="lang-en" onclick="setLanguage('en')">English</button>
+    </div>
+
+    <h1 data-i18n="app.title">할일 목록</h1>
 
     <form id="todo-form">
-        <input type="text" id="title" placeholder="제목 (필수)" required>
-        <input type="text" id="description" placeholder="설명 (선택)">
-        <label for="group" style="margin-left:8px;">그룹:</label>
+        <input type="text" id="title" data-i18n-placeholder="form.title_placeholder" placeholder="제목 (필수)" required>
+        <input type="text" id="description" data-i18n-placeholder="form.description_placeholder" placeholder="설명 (선택)">
+        <label for="group" style="margin-left:8px;" data-i18n="form.group_label">그룹:</label>
         <input type="number" id="group" min="1" max="9" step="1" value="1" style="width:3rem;">
-        <button type="submit">Add To-Do</button>
+        <button type="submit" data-i18n="form.submit_button">할일 추가</button>
     </form>
 
     <hr>
-    <h3>필터 및 정렬</h3>
+    <h3 data-i18n="filter.title">필터 및 정렬</h3>
     <div>
-        <label>상태:</label>
-        <button type="button" class="filter-status" data-status="all">전체</button>
-        <button type="button" class="filter-status" data-status="pending">미완료</button>
-        <button type="button" class="filter-status" data-status="completed">완료</button>
-        
-        <label style="margin-left:16px;">그룹:</label>
-        <button type="button" class="filter-group-btn" data-group="all">전체</button>
+        <label data-i18n="filter.status_label">상태:</label>
+        <button type="button" class="filter-status" data-status="all" data-i18n="filter.status_all">전체</button>
+        <button type="button" class="filter-status" data-status="pending" data-i18n="filter.status_pending">미완료</button>
+        <button type="button" class="filter-status" data-status="completed" data-i18n="filter.status_completed">완료</button>
+
+        <label style="margin-left:16px;" data-i18n="filter.group_label">그룹:</label>
+        <button type="button" class="filter-group-btn" data-group="all" data-i18n="filter.group_all">전체</button>
         <button type="button" class="filter-group-btn" data-group="1">1</button>
         <button type="button" class="filter-group-btn" data-group="2">2</button>
         <button type="button" class="filter-group-btn" data-group="3">3</button>
@@ -37,18 +42,18 @@
         <button type="button" class="filter-group-btn" data-group="9">9</button>
     </div>
     <div style="margin-top:8px;">
-        <label>정렬:</label>
+        <label data-i18n="filter.sort_label">정렬:</label>
         <select id="sort-field">
-            <option value="created_at">생성일</option>
-            <option value="id">ID</option>
-            <option value="title">제목</option>
-            <option value="group">그룹</option>
-            <option value="completed">완료상태</option>
-            <option value="completed_at">완료일</option>
+            <option value="created_at" data-i18n="filter.sort_created_at">생성일</option>
+            <option value="id" data-i18n="filter.sort_id">ID</option>
+            <option value="title" data-i18n="filter.sort_title">제목</option>
+            <option value="group" data-i18n="filter.sort_group">그룹</option>
+            <option value="completed" data-i18n="filter.sort_completed">완료상태</option>
+            <option value="completed_at" data-i18n="filter.sort_completed_at">완료일</option>
         </select>
         <select id="sort-order">
-            <option value="desc">내림차순</option>
-            <option value="asc">오름차순</option>
+            <option value="desc" data-i18n="filter.order_desc">내림차순</option>
+            <option value="asc" data-i18n="filter.order_asc">오름차순</option>
         </select>
     </div>
     <div style="margin-top:8px;">
@@ -58,6 +63,66 @@
 
     <div id="groups"></div>
     <script>
+        // i18n Support
+        let currentLang = localStorage.getItem('language') || 'ko';
+        let i18nMessages = {};
+
+        async function loadI18n(lang) {
+            try {
+                const response = await fetch(`/i18n/${lang}`);
+                i18nMessages = await response.json();
+                currentLang = lang;
+                localStorage.setItem('language', lang);
+                applyI18n();
+                updateFilterDisplay();
+            } catch (error) {
+                console.error('Failed to load language file:', error);
+            }
+        }
+
+        function t(keyPath) {
+            const keys = keyPath.split('.');
+            let value = i18nMessages;
+            for (const key of keys) {
+                value = value?.[key];
+                if (!value) return keyPath;
+            }
+            return value || keyPath;
+        }
+
+        function applyI18n() {
+            // Update text content
+            document.querySelectorAll('[data-i18n]').forEach(elem => {
+                const key = elem.getAttribute('data-i18n');
+                const text = t(key);
+
+                if (elem.tagName === 'TITLE') {
+                    elem.textContent = text;
+                } else if (elem.tagName === 'OPTION') {
+                    elem.textContent = text;
+                } else {
+                    elem.textContent = text;
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
+                const key = elem.getAttribute('data-i18n-placeholder');
+                elem.placeholder = t(key);
+            });
+
+            // Update lang buttons
+            document.getElementById('lang-ko').style.fontWeight = currentLang === 'ko' ? 'bold' : 'normal';
+            document.getElementById('lang-en').style.fontWeight = currentLang === 'en' ? 'bold' : 'normal';
+        }
+
+        function setLanguage(lang) {
+            loadI18n(lang);
+        }
+
+        // Initialize i18n on page load
+        loadI18n(currentLang);
+
         // 현재 필터 상태
         let currentFilters = {
             status: 'all',
@@ -86,20 +151,15 @@
         function updateFilterDisplay() {
             const { status, group, sortField, sortOrder } = currentFilters;
 
-            const statusText = status === 'all' ? '전체' : status === 'pending' ? '미완료' : '완료';
-            const groupText = group === 'all' ? '전체' : group;
-            const sortFieldText = {
-                'created_at': '생성일',
-                'id': 'ID',
-                'title': '제목',
-                'group': '그룹',
-                'completed': '완료상태',
-                'completed_at': '완료일'
-            }[sortField] || sortField;
-            const sortOrderText = sortOrder === 'asc' ? '오름차순' : '내림차순';
+            const statusText = status === 'all' ? t('filter.status_all') :
+                               status === 'pending' ? t('filter.status_pending') :
+                               t('filter.status_completed');
+            const groupText = group === 'all' ? t('filter.group_all') : group;
+            const sortFieldText = t(`filter.sort_${sortField}`);
+            const sortOrderText = sortOrder === 'asc' ? t('filter.order_asc') : t('filter.order_desc');
 
             document.getElementById('filter-display').textContent =
-                `현재 필터: 상태=${statusText}, 그룹=${groupText}, 정렬=${sortFieldText}(${sortOrderText})`;
+                `${t('filter.display_prefix')}${statusText}${t('filter.display_group')}${groupText}${t('filter.display_sort')}${sortFieldText}(${sortOrderText})`;
         }
 
         async function fetchTodos() {
@@ -148,7 +208,7 @@
             container.innerHTML = '';
 
             if (todos.length === 0) {
-                container.innerHTML = '<p>할일이 없습니다.</p>';
+                container.innerHTML = `<p>${t('todo.empty')}</p>`;
                 return;
             }
 
@@ -164,7 +224,7 @@
             groups.forEach((g, idx) => {
                 if (idx > 0) container.appendChild(document.createElement('hr'));
                 const section = el('div');
-                section.appendChild(el('h2', {}, `Group ${g}`));
+                section.appendChild(el('h2', {}, `${t('todo.group_prefix')} ${g}`));
 
                 const list = el('ul');
                 byGroup.get(g).forEach(todo => {
@@ -180,21 +240,21 @@
             const label = el('div', {},
                 el('strong', {}, todo.title),
                 ' ',
-                todo.completed ? el('span', {}, '(완료)') : ''
+                todo.completed ? el('span', {}, t('todo.completed_badge')) : ''
             );
             const desc = todo.description ? el('div', {}, todo.description) : el('div');
             const meta = el('div', {},
-                el('small', {}, `생성: ${fmt(todo.created_at)}`),
-                todo.completed_at ? el('small', { style: 'margin-left:8px;' }, `완료: ${fmt(todo.completed_at)}`) : ''
+                el('small', {}, `${t('todo.created_label')} ${fmt(todo.created_at)}`),
+                todo.completed_at ? el('small', { style: 'margin-left:8px;' }, `${t('todo.completed_label')} ${fmt(todo.completed_at)}`) : ''
             );
 
             const btns = el('div', { style: 'margin-top:4px;' });
-            const editBtn = el('button', { type: 'button', onclick: () => editTodo(todo) }, '수정');
-            const delBtn = el('button', { type: 'button', style: 'margin-left:4px;', onclick: () => deleteTodo(todo.id) }, '삭제');
+            const editBtn = el('button', { type: 'button', onclick: () => editTodo(todo) }, t('todo.button_edit'));
+            const delBtn = el('button', { type: 'button', style: 'margin-left:4px;', onclick: () => deleteTodo(todo.id) }, t('todo.button_delete'));
             btns.appendChild(editBtn);
             btns.appendChild(delBtn);
             if (!todo.completed) {
-                const doneBtn = el('button', { type: 'button', style: 'margin-left:4px;', onclick: () => completeTodo(todo.id) }, '완료');
+                const doneBtn = el('button', { type: 'button', style: 'margin-left:4px;', onclick: () => completeTodo(todo.id) }, t('todo.button_complete'));
                 btns.appendChild(doneBtn);
             }
 
@@ -268,10 +328,10 @@
         }
 
         async function editTodo(todo) {
-            const title = window.prompt('제목', todo.title);
+            const title = window.prompt(t('prompt.edit_title'), todo.title);
             if (title === null || title.trim() === '') return; // cancel or empty
-            const description = window.prompt('설명 (빈 값 허용)', todo.description || '') ?? '';
-            const groupStr = window.prompt('그룹 (1-9)', String(todo.group ?? 1));
+            const description = window.prompt(t('prompt.edit_description'), todo.description || '') ?? '';
+            const groupStr = window.prompt(t('prompt.edit_group'), String(todo.group ?? 1));
             let group = Number(groupStr);
             if (!Number.isFinite(group) || group < 1 || group > 9) group = todo.group ?? 1;
             await fetch(`/todos/${todo.id}`, {
