@@ -176,27 +176,41 @@ def create_todo(todo: TodoCreate):
     save_todos(todos)
     return item
 
+# Helper functions for update_todo
+def _apply_simple_fields(todo: dict, patch: TodoUpdate) -> None:
+    """Apply simple field updates (title, description, group) from patch to todo"""
+    simple_fields = ["title", "description", "group"]
+    for field in simple_fields:
+        value = getattr(patch, field, None)
+        if value is not None:
+            todo[field] = value
+
+
+def _update_completed_status(todo: dict, new_completed: bool) -> None:
+    """Update completed status and manage completed_at timestamp"""
+    prev_completed = bool(todo.get("completed", False))
+    todo["completed"] = bool(new_completed)
+
+    # Set completed_at when transitioning from incomplete to complete
+    if todo["completed"] and not prev_completed:
+        todo["completed_at"] = datetime.now(timezone.utc).isoformat()
+    # Clear completed_at when marking as incomplete
+    elif not todo["completed"]:
+        todo["completed_at"] = None
+
+
 # Update
 @app.put("/todos/{todo_id}", response_model=TodoItem)
 def update_todo(todo_id: int, patch: TodoUpdate, request: Request):
     todos = load_todos()
     for i, todo in enumerate(todos):
         if todo.get("id") == todo_id:
-            # Apply updates
-            if patch.title is not None:
-                todo["title"] = patch.title
-            if patch.description is not None:
-                todo["description"] = patch.description
-            if patch.group is not None:
-                todo["group"] = patch.group
+            # Apply simple field updates
+            _apply_simple_fields(todo, patch)
 
+            # Handle completed status updates
             if patch.completed is not None:
-                prev = bool(todo.get("completed", False))
-                todo["completed"] = bool(patch.completed)
-                if todo["completed"] and not prev:
-                    todo["completed_at"] = datetime.now(timezone.utc).isoformat()
-                if not todo["completed"]:
-                    todo["completed_at"] = None
+                _update_completed_status(todo, patch.completed)
 
             todos[i] = todo
             save_todos(todos)
