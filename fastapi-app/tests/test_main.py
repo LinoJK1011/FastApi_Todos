@@ -4,10 +4,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import pytest
 from fastapi.testclient import TestClient
-from main import app, save_todos, load_todos, TodoItem
+from main import app, save_todos, load_todos, TodoItem, load_i18n
 from datetime import datetime, timezone
 
 client = TestClient(app)
+
+# Load Korean messages for tests
+i18n = load_i18n("ko")
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
@@ -194,7 +197,7 @@ def test_delete_todo():
 
     response = client.delete("/todos/1")
     assert response.status_code == 200
-    assert response.json()["message"] == "To-Do item deleted"
+    assert response.json()["message"] == i18n["api"]["todo_deleted"]
 
     # 삭제 확인
     todos = load_todos()
