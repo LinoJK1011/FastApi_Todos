@@ -5,8 +5,12 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 import json
 from datetime import datetime, timezone
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
+
+# Prometheus 메트릭스 엔드포인트 (/metrics)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # i18n Support
 MULTILANG_DIR = Path(__file__).resolve().parent / "multilang"
